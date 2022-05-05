@@ -1,11 +1,11 @@
 package sandbox.app
 package crawler.WikiCrawlerApp
 
-import akka.actor.Status.Success
+import scala.util.{Success, Failure}
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding.Get
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import akka.stream.scaladsl.MergeHub.source
 import akka.stream.{ActorMaterializer, ClosedShape, CompletionStrategy, OverflowStrategy}
 import akka.stream.scaladsl.{Broadcast, Concat, Flow, GraphDSL, RunnableGraph, Sink, Source, ZipWith}
@@ -22,7 +22,7 @@ import akka.util.ByteString
 
 import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, Future, TimeoutException}
 import scala.util.Try
 
 case class Url(url: String, depth: Long)
@@ -33,34 +33,21 @@ object Main extends App {
 
   import system.dispatcher
 
-  val responseFuture =
-    Http().singleRequest(HttpRequest(uri = "https://index.scala-lang.org/nielsenbe/spark-wiki-parser"))
-  val timeout = 5.second
-  val responseAsString = Await.result(
-    responseFuture
-      .flatMap { resp => resp.entity.toStrict(timeout) }
-      .map { strictEntity => strictEntity.data.utf8String },
-    timeout
-  )
-
-  //  def responseAsString: Url => (Url, String) = {
-  //    url => Http().singleRequest(HttpRequest(uri=url.url)) =>
-  //  }
-
-  val matValuePoweredSource = Source.queue[Url](bufferSize = 10, OverflowStrategy.backpressure)
+  val matValuePoweredSource = Source.queue[Url](bufferSize = 100, OverflowStrategy.backpressure)
   val (sourceMat, source) = matValuePoweredSource.preMaterialize()
   val visited = Set()
 
-  sourceMat.offer(Url("https://index.scala-lang.org/nielsenbe/spark-wiki-parser", 3))
+  sourceMat.offer(Url("https://en.wikipedia.org/wiki/Taxi", 4))
 
   def runRequest(url: Url): Future[String] = {
-    Http()
-      .singleRequest(HttpRequest(method = GET, uri = url.url))
-      .flatMap { response =>
-        response.entity.dataBytes
-          .runReduce(_ ++ _)
-          .map(_.utf8String)
-      }
+    val res = Http().singleRequest(HttpRequest(method = GET, uri = url.url))
+    // TODO: move check to pipeline
+    res.flatMap{
+      case HttpResponse(StatusCodes.OK, headers, entity, _) => entity.dataBytes.runReduce(_ ++ _).map(_.utf8String)
+      case resp @ HttpResponse(code, _, _, _) => println("Request failed, response code: " + code)
+                                                  resp.discardEntityBytes()
+                                                    Future("")
+    }
   }
 
   def pushBack(url: Url): Unit = {
@@ -68,18 +55,28 @@ object Main extends App {
     println(s"Pushed to queue $url")
   }
 
-  source.mapAsync(4)(url => runRequest(url).map((url, _)))
+  source.mapAsync(1)(url => runRequest(url).map((url, _)))
     .map(urlResp => parseUrls(urlResp))
     .mapConcat(identity)
+    .map(url => Url(url.url, url.depth - 1))
     .filter(url => url.url != null && url.url != "")
     .map(url => if (url.depth > 0) { pushBack(url) } else println(s"Dropped $url"))
-    .to(Sink.ignore).run()
+    .mapAsync(1) { i =>
+      Future {
+        system.log.info(s"Start task $i")
+        Thread.sleep(100)
+        system.log.info(s"Start task $i")
+        i
+      }
+    }
+    .idleTimeout(5.seconds)
+    .recoverWithRetries(1, {case _: TimeoutException => Source.empty}).to(Sink.ignore).run()
 
 
-  def parseUrls: ((Url, String)) => List[Url] = {
-    case (url, resp) => Jsoup.parse(resp).select("a[href]").toList.map(_.attr("href"))
+  def parseUrls: ((Url, Object)) => List[Url] = {
+    case (url, resp) => Jsoup.parse(resp.toString).select("a[href]").toList.map(_.attr("href"))
       .map(l => if (l.matches("^[\\/#].*")) url + l else l)
-      .filter(l => Try(new URI(l)).isSuccess)
+      .filter(l => Try(new URL(l)).isSuccess)
       .map(Url(_, url.depth))
   }
 }

@@ -11,11 +11,8 @@ import org.jsoup.Jsoup
 
 import java.net.URL
 import akka.http.scaladsl.model.HttpMethods.GET
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-
 import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Future, TimeoutException}
+import scala.concurrent.{Future}
 import scala.util.Try
 
 

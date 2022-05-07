@@ -8,9 +8,18 @@ lazy val root = (project in file("."))
     idePackagePrefix := Some("sandbox.app")
   )
 
+lazy val akkaVersion = "2.6.19"
+
 ThisBuild / libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-stream" % "2.6.19",
-  "com.typesafe.akka" %% "akka-actor" % "2.6.19",
+  "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+  "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe.akka" %% "akka-http" % "10.2.9",
-  "org.jsoup" % "jsoup" % "1.14.3"
+  "org.jsoup" % "jsoup" % "1.14.3",
+  //  for logging
+  "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
+  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+  "ch.qos.logback" % "logback-classic" % "1.2.11",
+  "org.slf4j" % "slf4j-api" % "1.7.36",
+  "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
+  "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion
 )

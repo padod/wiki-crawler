@@ -1,10 +1,11 @@
 package sandbox.app
 package crawler.WikiCrawlerApp
 
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+package crawler
 
 import scala.collection.mutable
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler, StageLogging}
 
 class StateFulVisitedCheck extends GraphStage[FlowShape[Url, Url]] {
 
@@ -13,18 +14,13 @@ class StateFulVisitedCheck extends GraphStage[FlowShape[Url, Url]] {
 
   override def shape: FlowShape[Url, Url] = FlowShape.of(in, out)
 
-  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
+  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape)
+    with StageLogging {
 
     private val visitedUrls: mutable.Set[String] = mutable.Set()
     val buffer: mutable.Queue[Url] = mutable.Queue[Url]()
     def bufferFull: Boolean = buffer.size == 100
     var downstreamWaiting = false
-
-//    override def preStart(): Unit = {
-//      // a detached stage needs to start upstream demand
-//      // itself as it is not triggered by downstream demand
-//      if (!visitedUrls.contains(url.url)) {pull(in)
-//    }
 
     setHandler(
       in,
@@ -32,7 +28,6 @@ class StateFulVisitedCheck extends GraphStage[FlowShape[Url, Url]] {
         override def onPush(): Unit = {
           val url = grab(in)
           if (!visitedUrls.contains(url.url)) {
-            println(s"Enqueuing not visited url ${url.url}")
             buffer.enqueue(url)
             visitedUrls += url.url
             if (downstreamWaiting) {
@@ -41,15 +36,14 @@ class StateFulVisitedCheck extends GraphStage[FlowShape[Url, Url]] {
               push(out, bufferedElem)
             }
           } else {
-            println(s"Dequeueing visited url ${url.url}")
-            Thread.sleep(100)
+            log.info(s"Dequeueing visited url ${url.url}")
           }
           if (!bufferFull) {
             pull(in)
           }
         }
-
-      })
+      }
+    )
 
     setHandler(
       out,

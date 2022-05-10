@@ -136,7 +136,6 @@ object CrawlerApp extends App {
     .idleTimeout(10.seconds)
     .withAttributes(ActorAttributes.supervisionStrategy(decider))
     .mapAsync(1)(url => runRequest(url).map((url, _)))
-    // TODO: think how to decouple flows bc I have to pull the url through stages to only use it later
     .map { case (url, resp) => (url, parsePageBody((url ,resp))) }
 
   val graph = GraphDSL.createGraph(writeFlow, continueFlow)(Keep.left) { implicit builder =>

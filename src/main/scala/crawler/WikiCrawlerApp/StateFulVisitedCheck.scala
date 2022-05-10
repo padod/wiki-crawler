@@ -1,8 +1,6 @@
 package sandbox.app
 package crawler.WikiCrawlerApp
 
-package crawler
-
 import scala.collection.mutable
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler, StageLogging}

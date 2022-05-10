@@ -22,6 +22,13 @@ import scala.concurrent.duration.DurationInt
 
 case class Url(url: String, depth: Long)
 
+case class Document(
+                     id: String,
+                     nodeUrl: String,
+                     BodyText: String,
+                     childNodes: List[String]
+                   )
+
 
 object CrawlerApp extends App {
 
@@ -40,10 +47,6 @@ object CrawlerApp extends App {
     case _: IllegalUriException => Supervision.Resume
     case e => system.log.error(s"$e"); Supervision.Stop
   }
-
-  val directory = new File("scraped")
-  if (!directory.exists) directory.mkdir
-
 
   def md5(s: String): String = {
     import java.math.BigInteger
@@ -71,12 +74,6 @@ object CrawlerApp extends App {
       }
   }
 
-  case class Document(
-                       id: String,
-                       nodeUrl: String,
-                       BodyText: String,
-                       childNodes: List[String]
-                     )
 
   def sink(d: Document): Document = {
     Future.successful(
@@ -118,7 +115,7 @@ object CrawlerApp extends App {
   }
 
   val writeFlow: Sink[Document, NotUsed] =
-    Flow[Document].mapAsync(parallelism = 4){ doc =>
+    Flow[Document].mapAsync(parallelism = 1){ doc =>
       system.log.info(s"Writing ${doc.nodeUrl} to ${doc.id}.json")
       Source.single(ByteString(doc.toJson.compactPrint)).runWith(FileIO.toPath(Paths.get(s"/Users/padod/Projects/queue-crawler/scraped/${doc.id}.json")))
     }.to(Sink.foreach[IOResult]{println})

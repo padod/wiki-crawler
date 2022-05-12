@@ -4,9 +4,11 @@ ThisBuild / scalaVersion := "2.13.8"
 
 lazy val root = (project in file("."))
   .settings(
-    name := "wiki-crawler",
-    idePackagePrefix := Some("sandbox.app")
+    name := "wiki-crawler"
   )
+
+//ThisBuild / assemblyMergeStrategy := {
+//}
 
 lazy val akkaVersion = "2.6.19"
 

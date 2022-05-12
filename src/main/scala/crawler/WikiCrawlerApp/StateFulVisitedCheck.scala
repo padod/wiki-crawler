@@ -1,4 +1,3 @@
-package sandbox.app
 package crawler.WikiCrawlerApp
 
 import scala.collection.mutable

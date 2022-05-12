@@ -1,19 +1,17 @@
-package sandbox.app
 package crawler.WikiCrawlerApp
 
 
-import akka.{Done, NotUsed}
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding.Get
 import akka.http.scaladsl.model.{HttpResponse, IllegalUriException, StatusCodes}
-import akka.stream.{ActorAttributes, ClosedShape, IOResult, OverflowStrategy, StreamTcpException, Supervision}
-import akka.stream.scaladsl.{Broadcast, FileIO, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
+import akka.stream.{ActorAttributes, ClosedShape, OverflowStrategy, StreamTcpException, Supervision}
+import akka.stream.scaladsl.{Broadcast, FileIO, Flow, GraphDSL, RunnableGraph, Sink, Source}
 import akka.util.ByteString
 import org.jsoup.Jsoup
 import spray.json._
 
-import java.io.File
 import java.nio.file.Paths
 import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.concurrent.Future
@@ -74,21 +72,13 @@ object CrawlerApp extends App {
       }
   }
 
-
-  def sink(d: Document): Document = {
-    Future.successful(
-      FileIO
-        .toPath(Paths.get(s"/Users/padod/Projects/queue-crawler/scraped/${d.id}.json"))
-        .mapMaterializedValue(_.flatMap(_ => Future.successful(Done)))
-    )
-    d
-  }
-
   def parsePageBody(urlResp: (Url, String)): Document = {
     val (url, responseBody) = urlResp
     val childUrls = Jsoup.parse(responseBody).select("a[href]").toList
       .map(_.attr("href"))
-      .filter(_.matches("\\/wiki\\/[^.]+$"))
+      .filter(l => l.matches("\\/wiki\\/[^.]+$")
+                    && !l.matches("\\/wiki/Main_Page")
+                    && !l.matches("\\/wiki\\/(Special|Category|Help|Portal|Talk|Wikipedia|Template):[^.]+$"))
       // employing the fact that internal links lead to article in the same language space in wiki
       .map(l => "https://en.wikipedia.org" + l)
     val text = Jsoup.parse(responseBody).select("#content").text()
@@ -96,10 +86,14 @@ object CrawlerApp extends App {
   }
 
   // prematerialization of the source is needed to kick off the recursive process of incoming url flow
-  val matValuePoweredSource = Source.queue[Url](bufferSize = 100, OverflowStrategy.backpressure)
+  val matValuePoweredSource = Source
+    .queue[Url](bufferSize = 1000, OverflowStrategy.backpressure)
+    // IO in separate substream per each file is slow, so need to curb the speed of the source
+    // better to stream continously or add conflateWithSeed((Array[Doc], Doc))
+    .throttle(5, 1.seconds)
   val (sourceMat, source) = matValuePoweredSource.preMaterialize()
 
-  sourceMat.offer(Url("https://en.wikipedia.org/wiki/Akka_(toolkit)", 5))
+  sourceMat.offer(Url("https://en.wikipedia.org/wiki/Spaghetti", 2))
 
   def pushBack(url: Url): Unit = {
     sourceMat.offer(url)
@@ -108,17 +102,14 @@ object CrawlerApp extends App {
 
   val stateFulVisitedCheck = Flow.fromGraph(new StateFulVisitedCheck)
 
-  def writeJsonFlow(doc: Document): Sink[Document, Future[IOResult]] = {
-    Flow[Document]
-      .map { doc => ByteString(doc.toJson.compactPrint) }
-      .toMat(FileIO.toPath(Paths.get(s"/Users/padod/Projects/queue-crawler/scraped/${doc.id}.json")))(Keep.right)
-  }
-
   val writeFlow: Sink[Document, NotUsed] =
-    Flow[Document].mapAsync(parallelism = 1){ doc =>
+    Flow[Document]
+      .buffer(1, OverflowStrategy.backpressure)
+      .mapAsync(4){ doc =>
       system.log.info(s"Writing ${doc.nodeUrl} to ${doc.id}.json")
-      Source.single(ByteString(doc.toJson.compactPrint)).runWith(FileIO.toPath(Paths.get(s"/Users/padod/Projects/queue-crawler/scraped/${doc.id}.json")))
-    }.to(Sink.foreach[IOResult]{println})
+      Source.single(ByteString(doc.toJson.compactPrint))
+        .runWith(FileIO.toPath(Paths.get(s"/Users/padod/Projects/wiki-crawler/scraped/${doc.id}.json")))
+    }.to(Sink.ignore)
 
   val continueFlow: Sink[(Url, Document), NotUsed] = Flow[(Url, Document)]
     .map { case (url, doc) => doc.childNodes.map(node => Url(node, url.depth-1))}
@@ -135,8 +126,9 @@ object CrawlerApp extends App {
     .mapAsync(1)(url => runRequest(url).map((url, _)))
     .map { case (url, resp) => (url, parsePageBody((url ,resp))) }
 
-  val graph = GraphDSL.createGraph(writeFlow, continueFlow)(Keep.left) { implicit builder =>
+  val graph = GraphDSL.createGraph(writeFlow, continueFlow)(Tuple2.apply) { implicit builder =>
     (write, continue) =>
+
       import GraphDSL.Implicits._
 
       val bcast = builder.add(Broadcast[(Url, Document)](2))
@@ -144,10 +136,12 @@ object CrawlerApp extends App {
       start ~> bcast
       bcast.out(0) ~> dropUrl ~> write
       bcast.out(1) ~> continue
+
       ClosedShape
   }
 
-  RunnableGraph
+  val materialized = RunnableGraph
     .fromGraph(graph).run()
+
 
 }

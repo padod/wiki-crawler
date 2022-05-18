@@ -1,18 +1,31 @@
-ThisBuild / version := "0.1.0-SNAPSHOT"
+import coursier.core.Configuration.provided
 
-ThisBuild / scalaVersion := "2.13.8"
+ThisBuild / version := "1.0"
 
 lazy val root = (project in file("."))
   .settings(
     name := "wiki-crawler"
-  )
+  ).aggregate(crawler, spark)
 
+lazy val crawler = project
+  .settings(
+    name := "crawler",
+    libraryDependencies ++= crawlerDeps,
+    scalaVersion := "2.13.8"
+    )
+
+lazy val spark = project
+  .settings(
+    name := "spark",
+    libraryDependencies ++= sparkDeps,
+    scalaVersion := "2.12.4"
+  )
 //ThisBuild / assemblyMergeStrategy := {
 //}
 
 lazy val akkaVersion = "2.6.19"
 
-ThisBuild / libraryDependencies ++= Seq(
+lazy val crawlerDeps = Seq(
   "com.typesafe.akka" %% "akka-stream" % akkaVersion,
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe.akka" %% "akka-http" % "10.2.9",
@@ -26,4 +39,10 @@ ThisBuild / libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % "1.7.36",
   "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
   "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion
+)
+
+lazy val sparkDeps = Seq(
+  "org.apache.spark" %% "spark-core" % "3.1.2" % provided,
+  "org.apache.spark" %% "spark-sql" % "3.1.2" % provided,
+  "com.arangodb" %% "arangodb-spark-connector" % "2.0.0"
 )

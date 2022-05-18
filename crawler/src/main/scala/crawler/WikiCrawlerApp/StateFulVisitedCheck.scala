@@ -6,8 +6,8 @@ import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler, St
 
 class StateFulVisitedCheck extends GraphStage[FlowShape[Url, Url]] {
 
-  val in: Inlet[Url] = Inlet[Url]("AccumulateWhileUnchanged.in")
-  val out: Outlet[Url] = Outlet[Url]("AccumulateWhileUnchanged.out")
+  val in: Inlet[Url] = Inlet[Url]("StateFulVisitedCheck.in")
+  val out: Outlet[Url] = Outlet[Url]("StateFulVisitedCheck.out")
 
   override def shape: FlowShape[Url, Url] = FlowShape.of(in, out)
 

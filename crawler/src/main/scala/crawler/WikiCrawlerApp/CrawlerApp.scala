@@ -13,9 +13,11 @@ import org.jsoup.Jsoup
 import spray.json._
 
 import java.nio.file.Paths
+import java.util.concurrent.TimeoutException
 import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
+import scala.util.Failure
 
 
 case class Url(url: String, depth: Long)
@@ -27,8 +29,10 @@ case class Document(
                      childNodes: List[String]
                    )
 
-
 object CrawlerApp extends App {
+
+  val startUrl = args.headOption.getOrElse("https://en.wikipedia.org/wiki/Taxi")
+  val startDepth = args.lastOption.getOrElse("1")
 
   import system.dispatcher
 
@@ -82,6 +86,7 @@ object CrawlerApp extends App {
       // employing the fact that internal links lead to article in the same language space in wiki
       .map(l => "https://en.wikipedia.org" + l)
     val text = Jsoup.parse(responseBody).select("#content").text()
+
     Document(md5(url.url), url.url, text, childUrls)
   }
 
@@ -93,7 +98,7 @@ object CrawlerApp extends App {
     .throttle(5, 1.seconds)
   val (sourceMat, source) = matValuePoweredSource.preMaterialize()
 
-  sourceMat.offer(Url("https://en.wikipedia.org/wiki/Spaghetti", 2))
+  sourceMat.offer(Url(startUrl, startDepth.toInt))
 
   def pushBack(url: Url): Unit = {
     sourceMat.offer(url)
@@ -109,7 +114,9 @@ object CrawlerApp extends App {
       system.log.info(s"Writing ${doc.nodeUrl} to ${doc.id}.json")
       Source.single(ByteString(doc.toJson.compactPrint))
         .runWith(FileIO.toPath(Paths.get(s"/Users/padod/Projects/wiki-crawler/scraped/${doc.id}.json")))
-    }.to(Sink.ignore)
+    }
+      .to(Sink.ignore)
+
 
   val continueFlow: Sink[(Url, Document), NotUsed] = Flow[(Url, Document)]
     .map { case (url, doc) => doc.childNodes.map(node => Url(node, url.depth-1))}
@@ -119,9 +126,18 @@ object CrawlerApp extends App {
     .map(url => if (url.depth > 0)  { pushBack(url) } else system.log.info(s"Reached final depth with ${url.url}"))
     .to(Sink.ignore)
 
+
   val start = source
-    // since the source is alive forever, explicit shutdown after it stops emitting new elements
     .idleTimeout(10.seconds)
+    .watchTermination()(
+      (_, future) =>
+        future.onComplete {
+          case Failure(exception) => exception match {
+//            "No elements passed in the last 10 seconds"
+            case ex: TimeoutException => system.log.info(ex.getMessage); system.terminate()
+            case ex => system.log.error(ex.getMessage); system.terminate()
+          }
+        })
     .withAttributes(ActorAttributes.supervisionStrategy(decider))
     .mapAsync(1)(url => runRequest(url).map((url, _)))
     .map { case (url, resp) => (url, parsePageBody((url ,resp))) }
@@ -133,6 +149,7 @@ object CrawlerApp extends App {
 
       val bcast = builder.add(Broadcast[(Url, Document)](2))
       val dropUrl = Flow[(Url, Document)].map { case (_, doc) => doc }
+
       start ~> bcast
       bcast.out(0) ~> dropUrl ~> write
       bcast.out(1) ~> continue
@@ -140,8 +157,6 @@ object CrawlerApp extends App {
       ClosedShape
   }
 
-  val materialized = RunnableGraph
-    .fromGraph(graph).run()
-
+  RunnableGraph.fromGraph(graph).run()
 
 }

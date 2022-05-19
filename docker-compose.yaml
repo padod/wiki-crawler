@@ -1,0 +1,59 @@
+version: '3.9'
+
+services:
+  spark-client:
+    image: docker.io/sparkapp
+    volumes:
+      - ./crawler/data:/crawler_data
+    ports:
+      - '8880:8080'
+    depends_on:
+      crawler:
+        condition: service_completed_successfully
+
+  crawler:
+    image: docker.io/crawler
+    volumes:
+      - ./crawler/data:/data
+      - ./crawler/logs:/target
+    command: https://en.wikipedia.org/wiki/Sausage 3
+
+  arangodb:
+    image: arangodb/arangodb
+    restart: always
+    ports:
+      - "8529:8529"
+    volumes:
+      - ./arangodb/data:/var/lib/arangodb3
+      - ./arangodb/app:/var/lib/arangodb3-apps
+    environment:
+      - ARANGO_NO_AUTH=1
+
+  spark:
+    image: docker.io/bitnami/spark:3.1.2
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - '8080:8080'
+
+  spark-worker:
+    image: docker.io/bitnami/spark:3.1.2
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    depends_on:
+      - spark
+
+
+networks:
+  my_network:

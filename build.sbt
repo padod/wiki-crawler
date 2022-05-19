@@ -52,5 +52,5 @@ lazy val crawlerDeps = Seq(
 lazy val sparkDeps = Seq(
   "org.apache.spark" %% "spark-core" % "3.1.2" % "provided",
   "org.apache.spark" %% "spark-sql" % "3.1.2" % "provided",
-  "com.arangodb" %% "arangodb-spark-connector" % "2.0.0"
+  "com.arangodb" %% "arangodb-spark-datasource-3.1" % "1.3.0"
 )

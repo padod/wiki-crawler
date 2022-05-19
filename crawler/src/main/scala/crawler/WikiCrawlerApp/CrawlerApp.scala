@@ -25,14 +25,14 @@ case class Url(url: String, depth: Long)
 case class Document(
                      id: String,
                      nodeUrl: String,
-                     BodyText: String,
-                     childNodes: List[String]
+                     body: String,
+                     childNodes: Map[String, String]
                    )
 
 object CrawlerApp extends App {
 
-  val startUrl = args.headOption.getOrElse("https://en.wikipedia.org/wiki/Taxi")
-  val startDepth = args.lastOption.getOrElse("1")
+  val startUrl = args(0)
+  val startDepth = args(1)
 
   import system.dispatcher
 
@@ -84,7 +84,7 @@ object CrawlerApp extends App {
                     && !l.matches("\\/wiki/Main_Page")
                     && !l.matches("\\/wiki\\/(Special|Category|Help|Portal|Talk|Wikipedia|Template):[^.]+$"))
       // employing the fact that internal links lead to article in the same language space in wiki
-      .map(l => "https://en.wikipedia.org" + l)
+      .map(l => md5(l) -> l).toMap
     val text = Jsoup.parse(responseBody).select("#content").text()
 
     Document(md5(url.url), url.url, text, childUrls)
@@ -113,13 +113,13 @@ object CrawlerApp extends App {
       .mapAsync(4){ doc =>
       system.log.info(s"Writing ${doc.nodeUrl} to ${doc.id}.json")
       Source.single(ByteString(doc.toJson.compactPrint))
-        .runWith(FileIO.toPath(Paths.get(s"/Users/padod/Projects/wiki-crawler/scraped/${doc.id}.json")))
+        .runWith(FileIO.toPath(Paths.get(s"/data/${doc.id}.json")))
     }
       .to(Sink.ignore)
 
 
   val continueFlow: Sink[(Url, Document), NotUsed] = Flow[(Url, Document)]
-    .map { case (url, doc) => doc.childNodes.map(node => Url(node, url.depth-1))}
+    .map { case (url, doc) => doc.childNodes.map {case (_, node) => Url("https://en.wikipedia.org" + node, url.depth-1)}}
     .mapConcat(identity)
     .via(stateFulVisitedCheck)
     .filter(url => url.url != null && url.url != "")

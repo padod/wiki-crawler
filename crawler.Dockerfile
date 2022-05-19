@@ -18,8 +18,10 @@ ARG VERSION
 ENV PROJECT_NAME=$PROJECT_NAME
 ENV VERSION=$VERSION
 
-COPY --from=stage1 ./root/$PROJECT_NAME/target/scala-2.13/${PROJECT_NAME}-assembly-$VERSION.jar /
+RUN mkdir /data
+COPY --from=stage1 ./root/$PROJECT_NAME/target/scala-2.13/${PROJECT_NAME}-assembly-$VERSION.jar ./executable.jar
 
 EXPOSE 8080
 
-CMD java -jar ${PROJECT_NAME}-assembly-$VERSION.jar
+ENTRYPOINT ["java", "-jar", "executable.jar"]
+CMD ["https://en.wikipedia.org/wiki/Sausage", "1"]

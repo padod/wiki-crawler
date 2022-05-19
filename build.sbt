@@ -1,11 +1,9 @@
-import coursier.core.Configuration.provided
-
 ThisBuild / version := "1.0"
 
 lazy val root = (project in file("."))
   .settings(
     name := "wiki-crawler"
-  ).aggregate(crawler, spark)
+  ).aggregate(crawler, sparkapp)
 
 lazy val crawler = project
   .settings(
@@ -14,14 +12,24 @@ lazy val crawler = project
     scalaVersion := "2.13.8"
     )
 
-lazy val spark = project
+lazy val assemblySettings = Seq(
+  assembly / assemblyMergeStrategy := {
+    case PathList("module-info.class") => MergeStrategy.discard
+    case x if x.endsWith("/module-info.class") => MergeStrategy.discard
+    case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+    case x =>
+      val oldStrategy = (assembly / assemblyMergeStrategy).value
+      oldStrategy(x)
+  }
+)
+
+lazy val sparkapp = project
   .settings(
-    name := "spark",
+    name := "sparkapp",
     libraryDependencies ++= sparkDeps,
-    scalaVersion := "2.12.4"
+    scalaVersion := "2.12.13",
+    assemblySettings
   )
-//ThisBuild / assemblyMergeStrategy := {
-//}
 
 lazy val akkaVersion = "2.6.19"
 
@@ -42,7 +50,7 @@ lazy val crawlerDeps = Seq(
 )
 
 lazy val sparkDeps = Seq(
-  "org.apache.spark" %% "spark-core" % "3.1.2" % provided,
-  "org.apache.spark" %% "spark-sql" % "3.1.2" % provided,
+  "org.apache.spark" %% "spark-core" % "3.1.2" % "provided",
+  "org.apache.spark" %% "spark-sql" % "3.1.2" % "provided",
   "com.arangodb" %% "arangodb-spark-connector" % "2.0.0"
 )

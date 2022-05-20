@@ -5,8 +5,11 @@ services:
     image: docker.io/sparkapp
     volumes:
       - ./crawler/data:/crawler_data
-    ports:
-      - '8880:8080'
+      - ./jars_dir:/opt/bitnami/spark/.ivy2
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - MAIN_CLASS=ArangoTransform
     depends_on:
       crawler:
         condition: service_completed_successfully
@@ -53,7 +56,3 @@ services:
       - SPARK_SSL_ENABLED=no
     depends_on:
       - spark
-
-
-networks:
-  my_network:

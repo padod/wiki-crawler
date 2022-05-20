@@ -123,7 +123,7 @@ object CrawlerApp extends App {
     .mapConcat(identity)
     .via(stateFulVisitedCheck)
     .filter(url => url.url != null && url.url != "")
-    .map(url => if (url.depth > 0)  { pushBack(url) } else system.log.info(s"Reached final depth with ${url.url}"))
+    .map(url => if (url.depth >= 0)  { pushBack(url) } else system.log.info(s"Reached final depth with ${url.url}"))
     .to(Sink.ignore)
 
 

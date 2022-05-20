@@ -1,6 +1,6 @@
-ARG BUILD_IMAGE_NAME
+ARG BUILD_IMAGE
 
-FROM $BUILD_IMAGE_NAME as stage1
+FROM $BUILD_IMAGE as stage1
 
 ARG VERSION
 ARG PROJECT_NAME
@@ -15,14 +15,14 @@ FROM bitnami/spark:3.1.2 as main
 
 ARG PROJECT_NAME
 ARG VERSION
+ARG SPARK_MASTER_URL
+ARG MAIN_CLASS
 ENV PROJECT_NAME=$PROJECT_NAME
 ENV VERSION=$VERSION
-ENV SPARK_MASTER_NAME=spark-master
-ENV SPARK_MASTER_PORT=7077
+ENV SPARK_MASTER_URL=$SPARK_MASTER_URL
+ENV MAIN_CLASS=$MAIN_CLASS
 
-COPY --from=stage1 ./root/$PROJECT_NAME/target/scala-2.12/${PROJECT_NAME}-assembly-$VERSION.jar /
-COPY submit.sh /submit.sh
+COPY --from=stage1 ./root/$PROJECT_NAME/target/scala-2.12/${PROJECT_NAME}-assembly-$VERSION.jar ./executable.jar
+COPY $PROJECT_NAME/submit.sh ./submit.sh
 
-EXPOSE 8080
-
-CMD ["/submit.sh"]
+CMD ["/bin/bash", "./submit.sh"]

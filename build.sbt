@@ -14,9 +14,10 @@ lazy val crawler = project
 
 lazy val assemblySettings = Seq(
   assembly / assemblyMergeStrategy := {
-    case PathList("module-info.class") => MergeStrategy.discard
-    case x if x.endsWith("/module-info.class") => MergeStrategy.discard
+    case PathList(ps @ _*) if ps.last == "module-info.class" => MergeStrategy.discard
+    case "module-info.class"           => MergeStrategy.discard
     case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+    case PathList("META-INF", "services", xs @ _*) => MergeStrategy.first
     case x =>
       val oldStrategy = (assembly / assemblyMergeStrategy).value
       oldStrategy(x)
@@ -52,5 +53,5 @@ lazy val crawlerDeps = Seq(
 lazy val sparkDeps = Seq(
   "org.apache.spark" %% "spark-core" % "3.1.2" % "provided",
   "org.apache.spark" %% "spark-sql" % "3.1.2" % "provided",
-  "com.arangodb" %% "arangodb-spark-datasource-3.1" % "1.3.0"
+//  "com.arangodb" %% "arangodb-spark-datasource-3.1" % "1.3.0"
 )

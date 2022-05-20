@@ -51,11 +51,11 @@ object ArangoTransform {
   def saveDF(df: DataFrame, tableName: String, tableType: String = "document"): Unit =
     df.write.format("com.arangodb.spark").mode(SaveMode.Append).options(
       Map(
-      "endpoints" -> "host.docker.internal:8529",
+      "endpoints" -> sys.env.getOrElse("COORDINATOR_ENDPOINT", "172.17.0.1:8529"),
       "ssl.enabled" -> "false",
       "ssl.cert.value" -> "",
       "table.shards" -> "1",
-      "confirmTruncate" -> "true",
+      "confirmTruncate" -> "false",
       "overwriteMode" -> "update",
       "mergeObjects"-> "true",
       "table" -> tableName,

@@ -24,4 +24,4 @@ COPY --from=stage1 ./root/$PROJECT_NAME/target/scala-2.13/${PROJECT_NAME}-assemb
 EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "executable.jar"]
-CMD ["https://en.wikipedia.org/wiki/Sausage", "1"]
+CMD ["url", "depth"]

@@ -7,19 +7,21 @@ services:
       - ./crawler/data:/crawler_data
       - ./jars_dir:/opt/bitnami/spark/.ivy2
     environment:
-      - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark:7077
       - MAIN_CLASS=ArangoTransform
     depends_on:
-      crawler:
-        condition: service_completed_successfully
+      - spark
+      - spark-worker
+      - arangodb
 
   crawler:
     image: docker.io/crawler
     volumes:
       - ./crawler/data:/data
       - ./crawler/logs:/target
-    command: https://en.wikipedia.org/wiki/Sausage 3
+    command: https://en.wikipedia.org/wiki/The_Guardian%27s_100_Best_Novels_Written_in_English 2
+    environment:
+      - COORDINATOR_ENDPOINT=host.docker.internal:8529
 
   arangodb:
     image: arangodb/arangodb
@@ -34,6 +36,8 @@ services:
 
   spark:
     image: docker.io/bitnami/spark:3.1.2
+    volumes:
+      - ./crawler/data:/crawler_data
     environment:
       - SPARK_MODE=master
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -54,5 +58,7 @@ services:
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
+    volumes:
+      - ./crawler/data:/crawler_data
     depends_on:
       - spark

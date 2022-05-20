@@ -49,9 +49,9 @@ object ArangoTransform {
   }
 
   def saveDF(df: DataFrame, tableName: String, tableType: String = "document"): Unit =
-    df.write.format("com.arangodb.spark").mode(SaveMode.Append).options(Map(
+    df.write.format("com.arangodb.spark").mode(SaveMode.Append).options(
+      Map(
       "endpoints" -> "host.docker.internal:8529",
-      "timeout" -> "3000000",
       "ssl.enabled" -> "false",
       "ssl.cert.value" -> "",
       "table.shards" -> "1",
@@ -65,24 +65,24 @@ object ArangoTransform {
 
   def main(args: Array[String]): Unit = {
 
-    logger.info(s"Reading json data...")
+    logger.info("Reading json data...")
 
     val spark: SparkSession = SparkSession.builder
       .appName(ArangoTransform.getClass.getName)
       .master(sys.env.getOrElse("SPARK_MASTER_URL", "spark://spark:7077"))
       .getOrCreate()
 
-    val docsDF = spark
-      .read
-      .schema(schemaFor[Document].dataType.asInstanceOf[StructType]).json(s"/crawler_data/*.json")
+    val docsDF = spark.read.schema(schemaFor[Document].dataType.asInstanceOf[StructType]).json(s"/crawler_data/*.json")
 
     val (nodesDF, leafNodesDF, edgesDF) = parseToCollection(docsDF)
+
+    logger.info("Dataframes created")
 
     saveDF(nodesDF, "wiki_articles")
     saveDF(leafNodesDF, "wiki_articles")
     saveDF(edgesDF, "wiki_links", "edge")
 
-    logger.info(s"Saved to ArangoDB")
+    logger.info("Saved to ArangoDB")
 
     spark.stop()
   }

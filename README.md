@@ -45,6 +45,8 @@ RETURN {
 occurences
 }
 ```
+which simply counts how many times a particular word occurred in the text body of all documents in the collection 
+(filtering cases like "vice-president" and "youknowthatfcknpresident")
 
 ## Considerations:
 Crawler throughput was reduced to 1 thread, so as not to DDoS Wikipedia servers.

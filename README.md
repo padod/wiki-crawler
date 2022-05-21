@@ -32,6 +32,19 @@ make run
 3) runs spark application
 4) spins up ArangoDB instance with the loaded data
 
+## Use cases
+ArangoDB works with both schema-less document collections and graphs,
+so you can apply fulltext search / linguistic analyzers and solve tasks that require
+graph traversing. There are graph vizualization tools available out of the box as well as AQL query engine
+allowing to perform more specific SQL-like computations over the collection.
+One simple use case for this project:
+```AQL
+FOR a IN wiki_articles
+COLLECT AGGREGATE occurences = SUM(LENGTH(REGEX_SPLIT(a.body, "(?<![a-zA-Z])president(?=[^a-zA-Z])", true))-1)
+RETURN {
+occurences
+}
+```
 
 ## Considerations:
 Crawler throughput was reduced to 1 thread, so as not to DDoS Wikipedia servers.

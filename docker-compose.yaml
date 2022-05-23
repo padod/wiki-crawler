@@ -9,6 +9,7 @@ services:
     environment:
       - SPARK_MASTER_URL=spark://spark:7077
       - MAIN_CLASS=ArangoTransform
+      - COORDINATOR_ENDPOINT=host.docker.internal:8529
     depends_on:
       - spark
       - spark-worker
@@ -19,9 +20,7 @@ services:
     volumes:
       - ./crawler/data:/data
       - ./crawler/logs:/target
-    command: https://en.wikipedia.org/wiki/The_Guardian%27s_100_Best_Novels_Written_in_English 2
-    environment:
-      - COORDINATOR_ENDPOINT=host.docker.internal:8529
+    command: https://en.wikipedia.org/wiki/Marketing 3
 
   arangodb:
     image: arangodb/arangodb

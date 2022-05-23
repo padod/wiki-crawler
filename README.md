@@ -33,10 +33,13 @@ make run
 4) spins up ArangoDB instance with the loaded data
 
 ## Use cases
+ArangoDB UI can be accessed at http://localhost:8529/.
 ArangoDB works with both schema-less document collections and graphs,
 so you can apply fulltext search / linguistic analyzers and solve tasks that require
-graph traversing. There are graph vizualization tools available out of the box as well as AQL query engine
-allowing to perform more specific SQL-like computations over the collection.
+graph traversing. There are some out of the box tools like graph visualizer (in GRAPHS), which allows to create visualizations 
+over the whole collection, like:
+![screenshot1](http://url/to/img.png)
+as AQL query engine allowing to perform more specific SQL-like computations over the collection (in QUERIES).
 One simple use case for this project:
 ```AQL
 FOR a IN wiki_articles

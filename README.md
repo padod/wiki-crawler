@@ -40,7 +40,7 @@ graph traversing. There are some out of the box tools like graph visualizer (in 
 over the whole collection, like:
 ![screenshot1](https://github.com/padod/wiki-crawler/blob/master/screenshots/1.png)
 as AQL query engine allowing to perform more specific SQL-like computations over the collection (in QUERIES).
-One simple use case for this project:
+* One simple use case for this project:
 ```AQL
 FOR a IN wiki_articles
 COLLECT AGGREGATE occurences = SUM(LENGTH(REGEX_SPLIT(a.body, "(?<![a-zA-Z])president(?=[^a-zA-Z])", true))-1)
@@ -49,7 +49,17 @@ occurences
 }
 ```
 which simply counts how many times a particular word occurred in the text body of all documents in the collection 
-(filtering cases like "presipresident" and "presidentation")
+(filtering cases like "presipresident" and "presidentation").
+* Checking word count per article
+```AQL
+FOR a IN wiki_articles
+  LET cnt = LENGTH(REGEX_SPLIT(a.body, "(?<![a-zA-Z])president(?=[^a-zA-Z])", true))-1
+  SORT cnt desc
+  RETURN {
+  name: a.name,
+  cnt: cnt
+  }
+```
 
 ## Considerations:
 * Crawler throughput was reduced to 1 thread, so as not to DDoS Wikipedia servers.

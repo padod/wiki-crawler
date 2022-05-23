@@ -52,5 +52,7 @@ which simply counts how many times a particular word occurred in the text body o
 (filtering cases like "presipresident" and "presidentation")
 
 ## Considerations:
-Crawler throughput was reduced to 1 thread, so as not to DDoS Wikipedia servers.
+* Crawler throughput was reduced to 1 thread, so as not to DDoS Wikipedia servers.
 Setting the crawing depth too big (like 10) at one go is not advisable for the same reason.
+* Please note that [as of now](https://github.com/arangodb/arangodb-docker/issues/53), 
+ArangoDB is not available for ARM M1 processors

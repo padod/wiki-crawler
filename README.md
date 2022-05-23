@@ -38,7 +38,7 @@ ArangoDB works with both schema-less document collections and graphs,
 so you can apply fulltext search / linguistic analyzers and solve tasks that require
 graph traversing. There are some out of the box tools like graph visualizer (in GRAPHS), which allows to create visualizations 
 over the whole collection, like:
-![screenshot1](http://url/to/img.png)
+![screenshot1](https://github.com/padod/wiki-crawler/blob/master/screenshots/1.png)
 as AQL query engine allowing to perform more specific SQL-like computations over the collection (in QUERIES).
 One simple use case for this project:
 ```AQL

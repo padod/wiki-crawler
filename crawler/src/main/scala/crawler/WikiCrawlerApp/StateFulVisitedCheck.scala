@@ -15,9 +15,6 @@ class StateFulVisitedCheck extends GraphStage[FlowShape[Url, Url]] {
     with StageLogging {
 
     private val visitedUrls: mutable.Set[String] = mutable.Set()
-    val buffer: mutable.Queue[Url] = mutable.Queue[Url]()
-    def bufferFull: Boolean = buffer.size == 100
-    var downstreamWaiting = false
 
     setHandler(
       in,
@@ -25,17 +22,10 @@ class StateFulVisitedCheck extends GraphStage[FlowShape[Url, Url]] {
         override def onPush(): Unit = {
           val url = grab(in)
           if (!visitedUrls.contains(url.url)) {
-            buffer.enqueue(url)
             visitedUrls += url.url
-            if (downstreamWaiting) {
-              downstreamWaiting = false
-              val bufferedElem = buffer.dequeue()
-              push(out, bufferedElem)
-            }
+            push(out, url)
           } else {
             log.info(s"Dequeueing visited url ${url.url}")
-          }
-          if (!bufferFull) {
             pull(in)
           }
         }
@@ -46,13 +36,7 @@ class StateFulVisitedCheck extends GraphStage[FlowShape[Url, Url]] {
       out,
       new OutHandler {
         override def onPull(): Unit = {
-          if (buffer.isEmpty) {
-            downstreamWaiting = true
-          } else {
-            val url = buffer.dequeue()
-            push(out, url)
-          }
-          if (!bufferFull && !hasBeenPulled(in)) {
+          if (!hasBeenPulled(in)) {
             pull(in)
           }
         }
